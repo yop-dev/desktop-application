@@ -33,7 +33,7 @@
           v-model="form.projectId"
           :placeholder="$t('Type to search or create a project')"
           filterable
-          allow-create
+          :filter-method="filterProjects"
           :default-first-option="false"
           :loading="creatingProject"
           :disabled="creatingProject"
@@ -41,10 +41,16 @@
           @change="onProjectChange"
         >
           <el-option
-            v-for="project in internalProjects"
+            v-for="project in filteredProjects"
             :key="project.id"
             :label="project.name"
             :value="String(project.id)"
+          />
+          <el-option
+            v-if="showCreateOption"
+            key="__create__"
+            :label="createOptionLabel"
+            value="__create__"
           />
         </el-select>
       </el-form-item>
@@ -78,6 +84,7 @@ export default {
       visible: false,
       loading: false,
       creatingProject: false,
+      projectFilterQuery: '',
       form: {
         name: '',
         projectId: null,
@@ -99,6 +106,28 @@ export default {
 
     },
 
+    filteredProjects() {
+
+      if (!this.projectFilterQuery.trim()) return this.internalProjects;
+      const q = this.projectFilterQuery.toLowerCase();
+      return this.internalProjects.filter(p => p.name.toLowerCase().includes(q));
+
+    },
+
+    showCreateOption() {
+
+      if (!this.projectFilterQuery.trim()) return false;
+      const q = this.projectFilterQuery.toLowerCase();
+      return !this.internalProjects.some(p => p.name.toLowerCase() === q);
+
+    },
+
+    createOptionLabel() {
+
+      return `+ Create "${this.projectFilterQuery}"`;
+
+    },
+
   },
 
   methods: {
@@ -114,8 +143,15 @@ export default {
       this.form = { name: '', projectId: null };
       this.loading = false;
       this.creatingProject = false;
+      this.projectFilterQuery = '';
       if (this.$refs.form)
         this.$refs.form.resetFields();
+
+    },
+
+    filterProjects(query) {
+
+      this.projectFilterQuery = query;
 
     },
 
@@ -123,11 +159,11 @@ export default {
 
       if (!val) return;
 
-      const isExisting = this.internalProjects.some(p => String(p.id) === val);
-      if (!isExisting) {
+      if (val === '__create__') {
 
-        const name = val;
+        const name = this.projectFilterQuery;
         this.form.projectId = null;
+        this.projectFilterQuery = '';
         this.createProject(name);
 
       }
@@ -151,10 +187,16 @@ export default {
 
         }
 
-        const projectsRes = await this.$ipc.request('projects/sync', {});
-        this.$store.dispatch('syncProjects', projectsRes.body);
+        const createdExternalId = String(result.body.project.externalId);
 
-        this.form.projectId = String(result.body.project.id);
+        const projectsRes = await this.$ipc.request('projects/sync', {});
+        await this.$store.dispatch('syncProjects', projectsRes.body);
+
+        const synced = this.$store.getters.projects.find(p => String(p.externalId) === createdExternalId);
+        this.form.projectId = synced ? String(synced.id) : null;
+
+        if (!this.form.projectId)
+          this.$message({ type: 'error', message: this.$t('Project was created but could not be selected') });
 
       } catch (err) {
 
