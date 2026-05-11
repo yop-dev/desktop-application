@@ -15,6 +15,11 @@ module.exports.router = router;
 // Proxy IPC.setWebContents method
 module.exports.setWebContents = wc => router.setWebContents(wc);
 
+const webSync = require('../base/web-sync');
+const Authentication = require('../base/authentication');
+Authentication.events.on('authenticated', () => webSync.startSync());
+Authentication.events.on('logged-out', () => webSync.stopSync());
+
 require('./authentication.js')(router);
 require('./misc.js')(router);
 require('./projects.js')(router);
