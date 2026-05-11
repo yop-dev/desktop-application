@@ -404,7 +404,7 @@ module.exports.createTask = async task => {
   try {
 
     // Request the task creation, then format this task into unified model
-    const {res: createdTask} = await api.tasks.create(taskToCreate);
+    const createdTask = await api.tasks.create(taskToCreate);
 
     if (!project)
       throw new UIError(500, 'Selected project is not found', 'ETSK450');
