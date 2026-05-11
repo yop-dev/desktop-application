@@ -36,8 +36,10 @@
           :filter-method="onProjectFilter"
           :loading="creatingProject"
           :disabled="creatingProject"
+          :default-first-option="false"
           style="width: 100%"
           @change="onProjectChange"
+          @visible-change="onDropdownToggle"
         >
           <el-option
             v-for="project in filteredProjects"
@@ -117,7 +119,7 @@ export default {
 
     showCreateOption() {
 
-      return this.projectFilterQuery.trim().length > 0 && this.filteredProjects.length === 0;
+      return this.projectFilterQuery.trim().length > 0;
 
     },
 
@@ -145,6 +147,13 @@ export default {
       this.projectFilterQuery = '';
       if (this.$refs.form)
         this.$refs.form.resetFields();
+
+    },
+
+    onDropdownToggle(open) {
+
+      if (open)
+        this.projectFilterQuery = '';
 
     },
 
