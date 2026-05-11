@@ -29,30 +29,17 @@
         :label="$t('Project')"
         prop="projectId"
       >
-        <el-select
-          v-model="form.projectId"
+        <el-autocomplete
+          v-model="projectDisplayName"
+          :fetch-suggestions="fetchProjectSuggestions"
           :placeholder="$t('Type to search or create a project')"
-          filterable
-          :filter-method="filterProjects"
-          :default-first-option="false"
-          :loading="creatingProject"
           :disabled="creatingProject"
+          :debounce="0"
+          :trigger-on-focus="true"
+          value-key="label"
           style="width: 100%"
-          @change="onProjectChange"
-        >
-          <el-option
-            v-for="project in filteredProjects"
-            :key="project.id"
-            :label="project.name"
-            :value="String(project.id)"
-          />
-          <el-option
-            v-if="showCreateOption"
-            key="__create__"
-            :label="createOptionLabel"
-            value="__create__"
-          />
-        </el-select>
+          @select="onProjectSelect"
+        />
       </el-form-item>
 
     </el-form>
@@ -84,7 +71,7 @@ export default {
       visible: false,
       loading: false,
       creatingProject: false,
-      projectFilterQuery: '',
+      projectDisplayName: '',
       form: {
         name: '',
         projectId: null,
@@ -106,25 +93,25 @@ export default {
 
     },
 
-    filteredProjects() {
+  },
 
-      if (!this.projectFilterQuery.trim()) return this.internalProjects;
-      const q = this.projectFilterQuery.toLowerCase();
-      return this.internalProjects.filter(p => p.name.toLowerCase().includes(q));
+  watch: {
 
-    },
+    projectDisplayName(val) {
 
-    showCreateOption() {
-
-      if (!this.projectFilterQuery.trim()) return false;
-      const q = this.projectFilterQuery.toLowerCase();
-      return !this.internalProjects.some(p => p.name.toLowerCase() === q);
+      if (!val)
+        this.form.projectId = null;
 
     },
 
-    createOptionLabel() {
+    'form.projectId'() {
 
-      return `+ Create "${this.projectFilterQuery}"`;
+      this.$nextTick(() => {
+
+        if (this.$refs.form)
+          this.$refs.form.validateField('projectId');
+
+      });
 
     },
 
@@ -141,30 +128,46 @@ export default {
     reset() {
 
       this.form = { name: '', projectId: null };
+      this.projectDisplayName = '';
       this.loading = false;
       this.creatingProject = false;
-      this.projectFilterQuery = '';
       if (this.$refs.form)
         this.$refs.form.resetFields();
 
     },
 
-    filterProjects(query) {
+    fetchProjectSuggestions(query, callback) {
 
-      this.projectFilterQuery = query;
+      const q = query.toLowerCase().trim();
+      const matches = q
+        ? this.internalProjects.filter(p => p.name.toLowerCase().includes(q))
+        : this.internalProjects;
+
+      const suggestions = matches.map(p => ({
+        label: p.name,
+        id: String(p.id),
+        externalId: p.externalId,
+      }));
+
+      if (q && !this.internalProjects.some(p => p.name.toLowerCase() === q))
+        suggestions.push({ label: `+ Create "${query}"`, id: '__create__', query });
+
+      callback(suggestions);
 
     },
 
-    onProjectChange(val) {
+    onProjectSelect(item) {
 
-      if (!val) return;
+      if (item.id === '__create__') {
 
-      if (val === '__create__') {
-
-        const name = this.projectFilterQuery;
+        this.projectDisplayName = '';
         this.form.projectId = null;
-        this.projectFilterQuery = '';
-        this.createProject(name);
+        this.createProject(item.query);
+
+      } else {
+
+        this.form.projectId = item.id;
+        this.projectDisplayName = item.label;
 
       }
 
@@ -193,10 +196,17 @@ export default {
         await this.$store.dispatch('syncProjects', projectsRes.body);
 
         const synced = this.$store.getters.projects.find(p => String(p.externalId) === createdExternalId);
-        this.form.projectId = synced ? String(synced.id) : null;
 
-        if (!this.form.projectId)
+        if (synced) {
+
+          this.form.projectId = String(synced.id);
+          this.projectDisplayName = synced.name;
+
+        } else {
+
           this.$message({ type: 'error', message: this.$t('Project was created but could not be selected') });
+
+        }
 
       } catch (err) {
 
