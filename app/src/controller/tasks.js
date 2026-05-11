@@ -417,7 +417,7 @@ module.exports.createTask = async task => {
       name: createdTask.task_name,
       description: createdTask.description,
       priority: createdTask.priority_id,
-      status: createdTask.active,
+      status: '1',
       projectId: project.id,
     });
 

@@ -254,10 +254,16 @@ export default {
 
         }
 
-        const tasks = await this.$ipc.request('tasks/list', {});
+        const project = this.$store.getters.projects.find(p => String(p.id) === this.form.projectId);
+        const newTask = Object.assign({}, result.body.task, {
+          status: '1',
+          TrackedTime: 0,
+          Tracks: [],
+          Project: project || null,
+        });
+        this.$store.dispatch('syncTasks', { tasks: [newTask, ...this.$store.getters.tasks] });
         const totalTime = await this.$ipc.request('time/total', {});
         this.$store.dispatch('totalTimeSync', totalTime.body);
-        this.$store.dispatch('syncTasks', tasks.body);
 
         this.$emit('created', result.body.task);
         this.visible = false;
