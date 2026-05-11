@@ -5,6 +5,7 @@ import * as Sentry from '@sentry/browser';
 import * as Integrations from '@sentry/integrations';
 import VueI18n from 'vue-i18n';
 import Element from 'element-ui';
+import ElementLocale from 'element-ui/lib/locale/lang/en';
 
 import store from './storage';
 import App from './components/App.vue';
@@ -32,7 +33,7 @@ if (process.env.NODE_ENV === 'development' && process.env.REMOTE_DEVTOOLS_ENABLE
 }
 
 Vue.use(VueI18n);
-Vue.use(Element);
+Vue.use(Element, { locale: ElementLocale });
 
 (async () => {
 

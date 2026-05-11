@@ -42,21 +42,34 @@
       @click="goTo('/user/settings')"
     />
     <el-button
+      v-if="!searchFieldActive && $route.path === '/user/tasks'"
+      type="primary"
+      icon="el-icon-plus"
+      circle
+      @click="$refs.createModal.show()"
+    />
+    <el-button
       v-if="!searchFieldActive && $route.path !== '/user/tasks'"
       type="secondary"
       icon="el-icon-close"
       circle
       @click="goBack()"
     />
+    <task-create-modal ref="createModal" />
   </el-container>
 </template>
 
 <script>
 import { clipboard } from 'electron';
+import TaskCreateModal from './tasks/TaskCreateModal.vue';
 
 export default {
 
   name: 'ControlBar',
+  components: {
+    TaskCreateModal,
+  },
+
   props: {
     isTrackerLoading: Boolean,
   },

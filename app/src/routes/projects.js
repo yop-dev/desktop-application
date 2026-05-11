@@ -1,7 +1,7 @@
 const Logger = require('../utils/log');
 const Projects = require('../controller/projects');
 const {UIError} = require('../utils/errors');
-const auth = require("../base/authentication");
+const auth = require('../base/authentication');
 
 const log = new Logger('Router:Projects');
 log.debug('Loaded');
@@ -90,6 +90,31 @@ module.exports = router => {
       request.send(500, {message: 'Internal error occured', id: 'ERTP501'});
 
       return false;
+
+    }
+
+  });
+
+  router.serve('projects/create', async request => {
+
+    const { name } = request.packet.body;
+
+    try {
+
+      const project = await Projects.createProject({ name });
+      return request.send(200, { project: Object.assign(project.dataValues) });
+
+    } catch (error) {
+
+      if (error instanceof UIError)
+        return request.send(error.code, {
+          message: error.message,
+          id: error.errorId,
+          error: error.error == null ? error.error : JSON.parse(JSON.stringify(error.error)),
+        });
+
+      log.error('Error during project creation', error);
+      return request.send(500, { message: 'Internal error', id: 'EPRJ500' });
 
     }
 

@@ -3,6 +3,7 @@ const api = require('../base/api');
 const database = require('../models').db.models;
 const OfflineMode = require('../base/offline-mode');
 const Log = require('../utils/log');
+const {UIError} = require('../utils/errors');
 
 const log = new Log('Projects');
 const projectEmitter = new EventEmitter();
@@ -162,5 +163,33 @@ module.exports.syncProjects = async (offlineProjects = null) => {
 module.exports.getProjectsList = async () => database.Project.findAll();
 
 module.exports.getProjectByInternalId = async internalId => database.Project.findByPk(internalId);
+
+module.exports.createProject = async ({ name }) => {
+
+  const res = await api.post('projects/create', { name });
+
+  if (!res.success) {
+
+    const status = res.error?.response?.status;
+    if (status === 403)
+      throw new UIError(403, 'Insufficient permissions to create project', 'EPRJ403');
+
+    throw new UIError(status || 500, 'Failed to create project', 'EPRJ500');
+
+  }
+
+  const created = res.response.data;
+  const savedProject = await database.Project.create({
+    externalId: String(created.id),
+    externalUrl: null,
+    name: created.name,
+    description: created.description || '',
+    source: created.source || 'internal',
+    screenshotsState: created.screenshots_state || 0,
+  });
+
+  return savedProject;
+
+};
 
 module.exports.events = projectEmitter;
