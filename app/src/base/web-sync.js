@@ -36,7 +36,29 @@ async function pollOnce() {
       where: { externalId: String(srv.task_id) },
     });
     if (!localTask) {
-      log.warning(`WebSync: task ${srv.task_id} not found in local DB`);
+      log.warning(`WebSync: task ${srv.task_id} not found — syncing tasks`);
+      try {
+        const Tasks = require('../controller/tasks');
+        await Tasks.syncTasks(false, false, true);
+        const retried = await db.models.Task.findOne({ where: { externalId: String(srv.task_id) } });
+        if (!retried) {
+          log.warning(`WebSync: task ${srv.task_id} still not found after sync, skipping`);
+          return;
+        }
+        log.debug(`WebSync: task found after sync — starting tracker`);
+        _startedExternally = true;
+        _externalWebSession = srv.owner === 'web';
+        _lastKnownTaskId = srv.task_id;
+        try {
+          await TaskTracker.start(retried.id);
+        } catch (err) {
+          log.warning(`WebSync: TaskTracker.start after sync failed: ${err}`);
+        }
+      } catch (err) {
+        log.warning(`WebSync: task sync failed: ${err}`);
+      } finally {
+        _startedExternally = false;
+      }
       return;
     }
     log.debug(`WebSync: external start detected — task "${srv.task_name}" (owner: ${srv.owner})`);

@@ -21,6 +21,12 @@ export default {
     Loader,
   },
 
+  data() {
+    return {
+      _taskSyncTimer: null,
+    };
+  },
+
   computed: {
     authenticated() {
 
@@ -165,6 +171,14 @@ export default {
 
       this.$router.push({ name: 'user.tasks' });
 
+      this._taskSyncTimer = setInterval(async () => {
+          if (!this.authenticated) return;
+          try {
+              const tasks = await this.$ipc.request('tasks/sync', {});
+              this.$store.dispatch('syncTasks', tasks.body);
+          } catch (_) { /* ignore, non-critical background refresh */ }
+      }, 60000);
+
     }
 
     this.$ipc.serve('misc/update-not-synced-amount', () => {
@@ -189,6 +203,13 @@ export default {
     });
 
     this.updateTrackingFeatures();
+  },
+
+  beforeDestroy() {
+    if (this._taskSyncTimer) {
+        clearInterval(this._taskSyncTimer);
+        this._taskSyncTimer = null;
+    }
   },
 
   methods: {
