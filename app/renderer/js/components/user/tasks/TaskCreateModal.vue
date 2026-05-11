@@ -33,55 +33,26 @@
           v-model="form.projectId"
           :placeholder="$t('Select project')"
           filterable
+          :filter-method="onProjectFilter"
+          :loading="creatingProject"
+          :disabled="creatingProject"
           style="width: 100%"
+          @change="onProjectChange"
         >
           <el-option
-            v-for="project in internalProjects"
+            v-for="project in filteredProjects"
             :key="project.id"
             :label="project.name"
             :value="String(project.id)"
           />
+          <el-option
+            v-if="showCreateOption"
+            key="__create__"
+            :label="createOptionLabel"
+            value="__create__"
+          />
         </el-select>
       </el-form-item>
-
-      <el-form-item v-if="!showNewProject">
-        <el-button
-          type="text"
-          size="small"
-          @click="showNewProject = true"
-        >
-          + {{ $t('New project') }}
-        </el-button>
-      </el-form-item>
-
-      <template v-if="showNewProject">
-
-        <el-form-item :label="$t('New project name')">
-          <el-input
-            v-model="newProjectName"
-            :placeholder="$t('Project name')"
-            @keyup.enter.native="createProject"
-          />
-        </el-form-item>
-
-        <el-form-item>
-          <el-button
-            type="primary"
-            size="small"
-            :loading="creatingProject"
-            @click="createProject"
-          >
-            {{ $t('Create project') }}
-          </el-button>
-          <el-button
-            size="small"
-            @click="showNewProject = false; newProjectName = ''"
-          >
-            {{ $t('Cancel') }}
-          </el-button>
-        </el-form-item>
-
-      </template>
 
     </el-form>
 
@@ -111,9 +82,8 @@ export default {
 
       visible: false,
       loading: false,
-      showNewProject: false,
-      newProjectName: '',
       creatingProject: false,
+      projectFilterQuery: '',
       form: {
         name: '',
         projectId: null,
@@ -135,6 +105,28 @@ export default {
 
     },
 
+    filteredProjects() {
+
+      if (!this.projectFilterQuery)
+        return this.internalProjects;
+
+      const q = this.projectFilterQuery.toLowerCase();
+      return this.internalProjects.filter(p => p.name.toLowerCase().includes(q));
+
+    },
+
+    showCreateOption() {
+
+      return this.projectFilterQuery.trim().length > 0 && this.filteredProjects.length === 0;
+
+    },
+
+    createOptionLabel() {
+
+      return `+ Create "${this.projectFilterQuery}"`;
+
+    },
+
   },
 
   methods: {
@@ -149,24 +141,40 @@ export default {
 
       this.form = { name: '', projectId: null };
       this.loading = false;
-      this.showNewProject = false;
-      this.newProjectName = '';
       this.creatingProject = false;
+      this.projectFilterQuery = '';
       if (this.$refs.form)
         this.$refs.form.resetFields();
 
     },
 
-    async createProject() {
+    onProjectFilter(query) {
 
-      if (!this.newProjectName.trim())
+      this.projectFilterQuery = query;
+
+    },
+
+    onProjectChange(val) {
+
+      if (val !== '__create__')
+        return;
+
+      const name = this.projectFilterQuery.trim();
+      this.form.projectId = null;
+      this.createProject(name);
+
+    },
+
+    async createProject(name) {
+
+      if (!name)
         return;
 
       this.creatingProject = true;
 
       try {
 
-        const result = await this.$ipc.request('projects/create', { name: this.newProjectName.trim() });
+        const result = await this.$ipc.request('projects/create', { name });
 
         if (result.code !== 200) {
 
@@ -179,8 +187,7 @@ export default {
         this.$store.dispatch('syncProjects', projectsRes.body);
 
         this.form.projectId = String(result.body.project.id);
-        this.showNewProject = false;
-        this.newProjectName = '';
+        this.projectFilterQuery = '';
 
       } catch (err) {
 

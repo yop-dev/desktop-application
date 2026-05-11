@@ -166,7 +166,7 @@ module.exports.getProjectByInternalId = async internalId => database.Project.fin
 
 module.exports.createProject = async ({ name }) => {
 
-  const res = await api.post('projects/create', { name });
+  const res = await api.post('projects/create', { name, description: name, screenshots_state: 1 });
 
   if (!res.success) {
 
