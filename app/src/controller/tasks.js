@@ -393,7 +393,7 @@ module.exports.createTask = async task => {
     project_id: projectExternalId,
     task_name: name,
     active: 1,
-    users: [user.id, user.id],
+    users: [user.id],
     priority_id: 1,
   };
 

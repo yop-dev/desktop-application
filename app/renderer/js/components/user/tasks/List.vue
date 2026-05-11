@@ -300,7 +300,7 @@ export default {
         }
 
         // Workaround for tasks without project access (ugh!)
-        if (item.Project !== null) {
+        if (item.Project != null) {
 
           if (searchRegex.test(item.Project.name)) {
 

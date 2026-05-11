@@ -254,7 +254,7 @@ export default {
 
         }
 
-        const tasks = await this.$ipc.request('tasks/sync', {});
+        const tasks = await this.$ipc.request('tasks/list', {});
         const totalTime = await this.$ipc.request('time/total', {});
         this.$store.dispatch('totalTimeSync', totalTime.body);
         this.$store.dispatch('syncTasks', tasks.body);
