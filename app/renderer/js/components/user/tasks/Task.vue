@@ -36,16 +36,14 @@
                 :span="4"
                 class="task-controls"
         >
-            <!-- TODO: take care about right end of the row -->
-            <!-- wooooot? I'm not sure what's supposed to be done here :( -->
             <el-button
+                    v-if="!isAnyTracking"
                     :disabled="trackingLoad || loading"
-                    :plain="!active"
-                    :type="active ? 'success' : 'primary'"
-                    class="task-toggler"
+                    type="text"
+                    class="task-toggler task-toggler--start"
                     @click="track"
             >
-                {{ trackedTime }}
+                <i class="el-icon-video-play" />
             </el-button>
         </el-col>
     </el-row>
@@ -104,6 +102,12 @@ export default {
                 this.task.id === this.$store.getters.task
                 && this.$store.getters.trackStatus
             );
+
+        },
+
+        isAnyTracking() {
+
+            return this.$store.getters.trackStatus;
 
         },
 
