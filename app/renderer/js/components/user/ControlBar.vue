@@ -9,6 +9,13 @@
     />
     <el-button
       v-if="!searchFieldActive && $route.path === '/user/tasks'"
+      type="primary"
+      icon="el-icon-plus"
+      circle
+      @click="$refs.createModal.show()"
+    />
+    <el-button
+      v-if="!searchFieldActive && $route.path === '/user/tasks'"
       type="secondary"
       icon="el-icon-upload"
       circle
@@ -28,25 +35,10 @@
     </el-button>
     <el-button
       v-if="!searchFieldActive && $route.path === '/user/tasks'"
-      :loading="reportGenerationInProgress"
-      type="secondary"
-      icon="el-icon-s-order"
-      circle
-      @click="getReport"
-    />
-    <el-button
-      v-if="!searchFieldActive && $route.path === '/user/tasks'"
       type="secondary"
       icon="el-icon-setting"
       circle
       @click="goTo('/user/settings')"
-    />
-    <el-button
-      v-if="!searchFieldActive && $route.path === '/user/tasks'"
-      type="primary"
-      icon="el-icon-plus"
-      circle
-      @click="$refs.createModal.show()"
     />
     <el-button
       v-if="!searchFieldActive && $route.path !== '/user/tasks'"
@@ -55,7 +47,7 @@
       circle
       @click="goBack()"
     />
-    <task-create-modal ref="createModal" />
+    <task-create-modal ref="createModal" @created="onTaskCreated" />
   </el-container>
 </template>
 
@@ -144,6 +136,12 @@ export default {
     goBack() {
 
       this.$router.push({ name: 'user.tasks' });
+
+    },
+
+    onTaskCreated(task) {
+
+      this.$store.dispatch('startTrack', { taskId: task.id, $ipc: this.$ipc });
 
     },
 
