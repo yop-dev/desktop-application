@@ -2,6 +2,7 @@ const Logger = require('../utils/log');
 const { UIError } = require('../utils/errors');
 const TaskTracker = require('../base/task-tracker');
 const OSIntegration = require('../base/os-integration');
+const webSync = require('../base/web-sync');
 require('../base/deferred-handler');
 
 const log = new Logger('Router:Tracking');
@@ -121,8 +122,9 @@ module.exports = router => {
     router.emit('misc/update-not-synced-amount', {});
 
   });
-  TaskTracker.on('started', taskId => router.emit('tracking/event-started', { task: taskId }));
-  TaskTracker.on('switched', taskId => router.emit('tracking/event-started', { task: taskId }));
+  TaskTracker.on('started', taskId => router.emit('tracking/event-started', { task: taskId, startAt: webSync.getExternalStartAt() || null }));
+  TaskTracker.on('switched', taskId => router.emit('tracking/event-started', { task: taskId, startAt: webSync.getExternalStartAt() || null }));
+  TaskTracker.on('tasks-synced', () => router.emit('tasks/updated', {}));
   TaskTracker.on('stopped', () => {
 
     router.emit('tracking/event-stopped', {});

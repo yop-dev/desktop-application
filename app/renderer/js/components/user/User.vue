@@ -21,6 +21,8 @@
       </div>
     </transition>
 
+    <tracker @load-task-position="loadTaskPosition($event)" />
+
     <div
       ref="view"
       class="view"
@@ -36,8 +38,6 @@
         />
       </transition>
     </div>
-    <tracker @load-task-position="loadTaskPosition($event)" />
-
     <inactivity-dialog />
   </div>
 </template>
@@ -107,9 +107,26 @@ export default {
 
     });
 
-    this.$ipc.serve('tracking/event-started', req => {
+    this.$ipc.serve('tracking/event-started', async req => {
 
+      this.$store.commit('setTrackingStartAt', req.packet.body.startAt || null);
       this.$store.dispatch('setTrackingTask', req.packet.body.task);
+
+      // Task may not be in the local list yet (e.g. created on web and immediately started)
+      const taskId = req.packet.body.task;
+      if (!this.$store.getters.tasks.find(t => t.id === taskId)) {
+        const result = await this.$ipc.request('tasks/list', {});
+        if (result.body && result.body.tasks)
+          this.$store.dispatch('syncTasks', result.body);
+      }
+
+    });
+
+    this.$ipc.serve('tasks/updated', async () => {
+
+      const result = await this.$ipc.request('tasks/list', {});
+      if (result.body && result.body.tasks)
+        this.$store.dispatch('syncTasks', result.body);
 
     });
 
@@ -121,6 +138,7 @@ export default {
 
     this.$ipc.serve('tracking/event-stopped', () => {
 
+      this.$store.commit('setTrackingStartAt', null);
       this.$store.commit('track', false);
 
     });

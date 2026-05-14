@@ -25,6 +25,7 @@ export default {
     notSyncedAmount: 0,
     notSyncedScreenshotsAmount: 0,
     trackingFeatures: [],
+    trackingStartAt: null,
   },
 
   getters: {
@@ -46,6 +47,7 @@ export default {
     notSyncedAmount: s => s.notSyncedAmount,
     notSyncedScreenshotsAmount: s => s.notSyncedScreenshotsAmount,
     trackingFeatures: s => s.trackingFeatures,
+    trackingStartAt: s => s.trackingStartAt,
   },
 
   mutations: {
@@ -216,7 +218,13 @@ export default {
 
       state.trackingFeatures = payload;
 
-    }
+    },
+
+    setTrackingStartAt(state, payload) {
+
+      state.trackingStartAt = payload;
+
+    },
   },
 
   actions: {

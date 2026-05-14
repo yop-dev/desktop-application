@@ -17,7 +17,11 @@ module.exports.setWebContents = wc => router.setWebContents(wc);
 
 const webSync = require('../base/web-sync');
 const Authentication = require('../base/authentication');
-Authentication.events.on('authenticated', () => webSync.startSync());
+// Start polling immediately — covers the case where the app starts with a saved token
+// (the 'authenticated' event only fires on fresh login, not on token restore).
+// pollOnce() silently no-ops when the API is unreachable or unauthenticated.
+webSync.startSync();
+Authentication.events.on('authenticated', () => webSync.startSync()); // idempotent
 Authentication.events.on('logged-out', () => webSync.stopSync());
 
 require('./authentication.js')(router);

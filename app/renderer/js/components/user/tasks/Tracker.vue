@@ -1,53 +1,25 @@
 <template>
-    <div class="tracker">
-        <el-row class="task">
-            <el-col
-                    :span="14"
-                    :type="'flex'"
+    <div
+        v-if="trackingInProgress && trackingTask"
+        class="tracker-card"
+    >
+        <div class="tracker-card__info">
+            <p class="tracker-card__task" @click="openTask">{{ trackingTask.name }}</p>
+            <p class="tracker-card__project" @click="openProject">
+                <span class="tracker-card__dot" />
+                {{ projectName }}
+            </p>
+        </div>
+        <div class="tracker-card__controls">
+            <span class="tracker-card__time">{{ trackedTime }}</span>
+            <button
+                :disabled="trackingLoad"
+                class="tracker-card__stop"
+                @click="track"
             >
-                <div class="task-info">
-                    <template v-if="trackingTask">
-                        <p
-                                class="task-name clickable"
-                                @click="openTask"
-                        >
-                            {{ trackingTask.name }}
-                        </p>
-                        <p
-                                class="project-name clickable"
-                                @click="openProject"
-                        >
-                            {{ projectName }}
-                        </p>
-                    </template>
-                    <template v-else>
-                        <p class="task-name">
-                            {{ $t('On pause') }}
-                        </p>
-                    </template>
-                </div>
-            </el-col>
-            <el-col
-                    :span="10"
-                    class="tracker-controls"
-            >
-                <el-button
-                        icon="el-icon-files"
-                        size="medium"
-                        type="text"
-                        @click="openIntervalsQueue"
-                />
-                <el-button
-                        :disabled="!trackingTask || trackingLoad"
-                        :plain="!trackingInProgress"
-                        :type="trackingInProgress ? 'success' : 'danger'"
-                        class="tracker-toggler"
-                        @click="track"
-                >
-                    {{ trackedTime }}
-                </el-button>
-            </el-col>
-        </el-row>
+                <span class="tracker-card__stop-icon" />
+            </button>
+        </div>
     </div>
 </template>
 
@@ -66,9 +38,29 @@ export default {
             errorModal: false,
             reportSnack: false,
             trackButtonLocked: false,
+            sessionStartMs: null,
+            sessionSeconds: 0,
+            _sessionTimer: null,
         };
 
     },
+
+    watch: {
+        trackingInProgress(val) {
+            if (val) {
+                this._startSessionTimer();
+            } else {
+                this._stopSessionTimer();
+            }
+        },
+        // Reset timer when task switches while tracking
+        '$store.getters.task'(newId, oldId) {
+            if (newId !== oldId && this.trackingInProgress) {
+                this._startSessionTimer();
+            }
+        },
+    },
+
     computed: {
 
         trackingLoad() {
@@ -95,8 +87,7 @@ export default {
 
         trackedTime() {
 
-            const {totalTime} = this.$store.getters;
-            return new Date(totalTime * 1000).toISOString().substr(11, 8);
+            return new Date(this.sessionSeconds * 1000).toISOString().substr(11, 8);
 
         },
 
@@ -121,9 +112,38 @@ export default {
 
         });
 
+        if (this.trackingInProgress) {
+            this._startSessionTimer();
+        }
+
+    },
+
+    beforeDestroy() {
+
+        this._stopSessionTimer();
+
     },
 
     methods: {
+
+        _startSessionTimer() {
+            this._stopSessionTimer();
+            const serverStartAt = this.$store.getters.trackingStartAt;
+            this.sessionStartMs = serverStartAt ? new Date(serverStartAt).getTime() : Date.now();
+            this.sessionSeconds = Math.floor((Date.now() - this.sessionStartMs) / 1000);
+            this._sessionTimer = setInterval(() => {
+                this.sessionSeconds = Math.floor((Date.now() - this.sessionStartMs) / 1000);
+            }, 1000);
+        },
+
+        _stopSessionTimer() {
+            if (this._sessionTimer) {
+                clearInterval(this._sessionTimer);
+                this._sessionTimer = null;
+            }
+            this.sessionSeconds = 0;
+            this.sessionStartMs = null;
+        },
 
         /**
          * Opens this task details
@@ -358,68 +378,97 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-@import "../../../../scss/imports/variables";
-@import "../../../../scss/misc/tasks-style-misc";
+p { margin: 0; }
 
-p {
-  margin: 0;
-}
-
-.tracker {
-  padding: 1em 1.5em;
-  background-color: $--background-color-base;
-  border-top: $--border-base;
-  height: 40px;
-  max-height: 40px;
-  justify-content: center;
+.tracker-card {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  background: #e8f4fd;
+  border-bottom: 1px solid #c5e0f5;
+  padding: 10px 16px;
+  flex-shrink: 0;
 
-  .task {
-    padding: 0;
+  &__info {
     display: flex;
-    align-items: center;
-    background-color: inherit;
-
-    .task-info {
-      max-width: inherit;
-      padding: 0;
-
-      p:last-of-type {
-        margin: 0;
-      }
-    }
-
-    .tracker-controls {
-      display: flex;
-      flex-direction: row;
-      justify-content: flex-end;
-
-      .tracker-toggler {
-        width: 50%;
-        padding: 12px 0;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-      }
-
-      .tracker-toggler.el-button--success:hover:enabled {
-        background: #f56c6c;
-        border-color: #f56c6c;
-      }
-
-      .tracker-toggler.el-button--danger:hover:enabled {
-        background: #85ce61;
-        border-color: #85ce61;
-      }
-
-    }
+    flex-direction: column;
+    gap: 2px;
+    overflow: hidden;
+    flex: 1;
+    min-width: 0;
   }
 
-}
+  &__task {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1a2b3c;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+    &:hover { color: #0073ea; }
+  }
 
-.el-button.sync {
-  padding: 12px 20px;
+  &__project {
+    font-size: 11px;
+    color: #5f7a96;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    &:hover { color: #0073ea; }
+  }
+
+  &__dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #0073ea;
+    flex-shrink: 0;
+    display: inline-block;
+  }
+
+  &__controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+    margin-left: 12px;
+  }
+
+  &__time {
+    font-size: 16px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: #1a2b3c;
+    letter-spacing: 0.5px;
+  }
+
+  &__stop {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: #e04f4f;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s;
+    padding: 0;
+
+    &:hover:not(:disabled) { background: #c0392b; }
+    &:disabled { opacity: 0.5; cursor: not-allowed; }
+  }
+
+  &__stop-icon {
+    width: 10px;
+    height: 10px;
+    background: #fff;
+    border-radius: 1px;
+    display: block;
+  }
 }
 
 </style>
