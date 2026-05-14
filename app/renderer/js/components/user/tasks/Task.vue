@@ -5,7 +5,7 @@
             type="flex"
     >
         <el-col
-                :span="18"
+                :span="20"
                 class="task-info"
         >
             <p
@@ -20,17 +20,6 @@
             >
                 <i class="el-icon-camera" :class="screenshotIconClass"></i> {{ projectName }}
             </p>
-        </el-col>
-        <el-col
-                :span="2"
-                class="task-controls pin"
-        >
-            <el-button
-                    :class="{ pinned: isPinned }"
-                    :type="'text'"
-                    icon="el-icon-star-off"
-                    @click="pinner"
-            />
         </el-col>
         <el-col
                 :span="4"
@@ -360,7 +349,7 @@ export default {
       width: 100%;
       display: block;
       padding: 10px 0px;
-      font-size: 0.82rem;
+      font-size: 1.4rem;
     }
   }
 
