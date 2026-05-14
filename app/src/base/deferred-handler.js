@@ -66,10 +66,28 @@ const deferredIntervalsPush = async () => {
       // Push deferred interval
       let res = null;
 
-      if (rawInterval.screenshot)
-        res = await IntervalsController.pushTimeInterval(preparedInterval);
-      else
-        res = await IntervalsController.pushTimeInterval(preparedInterval, rawInterval.screenshot);
+      try {
+
+        if (rawInterval.screenshot)
+          res = await IntervalsController.pushTimeInterval(preparedInterval);
+        else
+          res = await IntervalsController.pushTimeInterval(preparedInterval, rawInterval.screenshot);
+
+      } catch (pushError) {
+
+        // 422: server rejected the interval (e.g. overlap with already-pushed data).
+        // The time is already on the server — mark as synced so it stops blocking.
+        if (pushError.isApiError && pushError.status === 422) {
+          log.warning(`Deferred interval rejected by server (422 validation) — marking synced to clear: ${pushError}`);
+          rawInterval.synced = true;
+          await rawInterval.save();
+          TaskTracker.emit('interval-pushed', { deferred: true });
+          continue;
+        }
+
+        throw pushError;
+
+      }
 
       log.debug(`Deferred interval (${res.response.data.id}) has been pushed`);
 
