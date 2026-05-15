@@ -402,9 +402,10 @@ class TaskTracker extends EventEmitter {
         this.emit('switching', { from: this.currentTask.id, to: task.id });
 
         // Stopping current task
+        // stop() can return false only due to _stopInProgress here — this.active was confirmed above
         const stopped = await this.stop(true, false);
         if (!stopped)
-          throw new UIError(500, 'Task switch aborted — stop already in progress', 'ERTR503');
+          throw new UIError(409, 'Task switch aborted — stop already in progress', 'ERTR503');
 
       } else {
 
