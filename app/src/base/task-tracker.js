@@ -539,7 +539,7 @@ class TaskTracker extends EventEmitter {
       throw new UIError(500, 'Rejected interval capture due to stopped tracker');
 
     if (this._captureInProgress) {
-      log.warning('captureCurrentInterval: concurrent call rejected — possible race condition');
+      log.debug('captureCurrentInterval: concurrent call rejected — possible race condition');
       return false;
     }
     this._captureInProgress = true;
