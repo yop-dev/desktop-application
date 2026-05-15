@@ -30,6 +30,10 @@ class TaskTracker extends EventEmitter {
      */
     this.active = false;
 
+    // Guards against concurrent stop() and captureCurrentInterval() calls
+    this._stopInProgress = false;
+    this._captureInProgress = false;
+
     /**
      * Designated time counter (ticker)
      * @type {Ticker}
@@ -469,59 +473,54 @@ class TaskTracker extends EventEmitter {
    */
   async stop(pushInterval = true, emitEvent = true) {
 
-    // Soft-fail if tracker is not active
-    if (!this.active)
+    if (!this.active || this._stopInProgress)
       return false;
 
-    // Dispatch transactional event
-    if (emitEvent)
-      this.emit('stopping');
+    this._stopInProgress = true;
 
-    // Stop active window tracking if active
-    if (activeWindow.active)
-      activeWindow.stop();
+    try {
 
-    // Stop inactivity detection
-    this.stopInactivityDetection();
+      if (emitEvent)
+        this.emit('stopping');
 
-    // Get amount of ticks, then stop the timer
-    const { ticks } = this.ticker;
-    this.ticker.stop(true);
+      if (activeWindow.active)
+        activeWindow.stop();
 
-    log.debug(`Executing tracker stop request (push = ${pushInterval}, dispatch = ${emitEvent})`);
+      this.stopInactivityDetection();
 
-    // Capturing & pushing interval, if it is longer than one second
-    if (pushInterval && (ticks >= 1))
-      await this.captureCurrentInterval(ticks);
+      const { ticks } = this.ticker;
+      this.ticker.stop(true);
 
-    // Move current task to previous, reset active flag
-    this.setTrackerStatus(false);
-    this.previousTask = this.currentTask;
-    this.currentTask = null;
+      log.debug(`Executing tracker stop request (push = ${pushInterval}, dispatch = ${emitEvent})`);
 
-    // Reset current interval states
-    this.currentInterval.startedAt = null;
-    this.currentInterval.everPaused = false;
+      if (pushInterval && (ticks >= 1))
+        await this.captureCurrentInterval(ticks);
 
-    // Stop event counter
-    eventCounter.stop();
+      this.setTrackerStatus(false);
+      this.previousTask = this.currentTask;
+      this.currentTask = null;
 
-    // Stop heartbeat
-    heartbeatMonitor.stop();
+      this.currentInterval.startedAt = null;
+      this.currentInterval.everPaused = false;
 
-    // Ensure that activity proof timeout is suspended
-    if (this.activityProofTimeoutTimerId) {
+      eventCounter.stop();
+      heartbeatMonitor.stop();
 
-      clearTimeout(this.activityProofTimeoutTimerId);
-      this.activityProofTimeoutTimerId = null;
+      if (this.activityProofTimeoutTimerId) {
 
+        clearTimeout(this.activityProofTimeoutTimerId);
+        this.activityProofTimeoutTimerId = null;
+
+      }
+
+      if (emitEvent)
+        this.emit('stopped');
+
+      return true;
+
+    } finally {
+      this._stopInProgress = false;
     }
-
-    // Emit transactional event
-    if (emitEvent)
-      this.emit('stopped');
-
-    return true;
 
   }
 
