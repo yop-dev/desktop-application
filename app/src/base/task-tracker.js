@@ -538,6 +538,12 @@ class TaskTracker extends EventEmitter {
     if (!this.active || !this.currentTask)
       throw new UIError(500, 'Rejected interval capture due to stopped tracker');
 
+    if (this._captureInProgress) {
+      log.warning('captureCurrentInterval: concurrent call rejected — possible race condition');
+      return false;
+    }
+    this._captureInProgress = true;
+
     try {
 
       // Get properties of current user account
@@ -692,6 +698,8 @@ class TaskTracker extends EventEmitter {
       log.error('Error occured during the interval submit', error);
       throw new UIError(500, `Unhandled system error occured: ${error}`, 'EAUTH502', error);
 
+    } finally {
+      this._captureInProgress = false;
     }
 
   }
