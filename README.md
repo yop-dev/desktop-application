@@ -1,3 +1,5 @@
+> ⚠️ **This repository has moved.** Active development continues at [the-comet-companies/cattr-workspace](https://github.com/the-comet-companies/cattr-workspace). This copy is no longer maintained.
+
 Cattr Desktop App  
 ==========
 Electron desktop application for Cattr  
