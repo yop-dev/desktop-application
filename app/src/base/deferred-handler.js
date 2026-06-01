@@ -27,7 +27,10 @@ const deferredIntervalsPush = async () => {
   threadLock = true;
 
   // Getting all deferred intervals
-  const deferredIntervals = await TimeIntervalModel.findAll({ where: { synced: false } });
+  const deferredIntervals = await TimeIntervalModel.findAll({
+    where: { synced: false },
+    order: [['startAt', 'ASC']],
+  });
 
   // Skip sync routine if there are no deffered intervals
   if (deferredIntervals.length === 0) {

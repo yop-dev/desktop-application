@@ -141,7 +141,14 @@ export default {
 
     onTaskCreated(task) {
 
-      this.$store.dispatch('startTrack', { taskId: task.id, $ipc: this.$ipc });
+      this.$store.dispatch('startTrack', { taskId: task.id, $ipc: this.$ipc })
+        .catch(error => {
+          this.$alert(
+            error.message || 'Could not start timer after task creation.',
+            'Tracking error',
+            { confirmButtonText: 'OK', callback: () => {} }
+          );
+        });
 
     },
 

@@ -222,6 +222,9 @@ export default {
 
     async submit() {
 
+      if (this.loading)
+        return;
+
       const valid = await new Promise(resolve => this.$refs.form.validate(ok => resolve(ok)));
       if (!valid)
         return;

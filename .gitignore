@@ -89,6 +89,12 @@ native/*.node
 # macOS
 .DS_Store
 
+# Superpowers plugin cache
+.superpowers/
+
+# Scratch test files
+test-electron.js
+
 # Idea
 .idea/
 

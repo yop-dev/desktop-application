@@ -16,9 +16,12 @@ let _externalStartAt = null;       // server start_at when session was started e
 let _externalStopCount = 0;        // consecutive null polls — stop only after STOP_DEBOUNCE
 let _externalStartInProgress = false; // mutex: prevent concurrent external-start handling
 let _lastPushedGapStartAt = null;  // track which session's gap we already pushed (prevent duplicates)
+let _desktopStopInFlight = false;  // true while tracking/stop is in transit — blocks false external-start detection
 
 const STOP_DEBOUNCE = 2;         // require 2 consecutive null responses before stopping desktop
 const GAP_THRESHOLD_SECONDS = 30; // min gap (seconds) between web start_at and desktop detection to trigger a catch-up interval
+
+let _clockSkewWarned = false;    // warn once per session — suppress repeated alerts on every poll tick
 
 async function callApiPost(path, body) {
   try {
@@ -60,6 +63,28 @@ async function pollOnce() {
     // STOP_DEBOUNCE only counts definitive "no session" responses, not network blips.
     if (!res || !res.success) return;
     srv = (res.response && res.response.data) ? res.response.data : null;
+
+    // EC-019: clock skew check — read the server's Date response header and compare
+    // to local time. Warn once if the delta exceeds 60 seconds.
+    if (!_clockSkewWarned && res.response && res.response.headers) {
+      const serverDateHeader = res.response.headers['date'] || res.response.headers['Date'];
+      if (serverDateHeader) {
+        const serverTime = new Date(serverDateHeader).getTime();
+        if (!isNaN(serverTime)) {
+          const skewMs = Math.abs(Date.now() - serverTime);
+          if (skewMs > 60000) {
+            _clockSkewWarned = true;
+            log.warning(`EC-019: Clock skew detected — desktop time differs from server by ${Math.round(skewMs / 1000)}s. Intervals may be rejected by the server.`);
+            // Emit to all renderer windows so the UI can surface a banner if desired
+            const { BrowserWindow } = require('electron');
+            BrowserWindow.getAllWindows().forEach(win => {
+              if (win && win.webContents)
+                win.webContents.send('clock-skew-warning', { skewMs });
+            });
+          }
+        }
+      }
+    }
   } catch (err) {
     return;
   }
@@ -70,6 +95,9 @@ async function pollOnce() {
 
   if (srv && !desktopTracking) {
     // External start: server has a session, desktop is idle.
+    // Guard: skip if we just stopped locally — tracking/stop may not have reached the server yet,
+    // so the server still reports a session for up to ~200ms after desktop stop completes.
+    if (_desktopStopInFlight) return;
     // Mutex: only one poll may run the start routine at a time.
     if (_externalStartInProgress) return;
     _externalStartInProgress = true;
@@ -219,7 +247,12 @@ TaskTracker.on('stopped', async () => {
   _lastKnownTaskId = null;
   _externalWebSession = false;
   _lastPushedGapStartAt = null;
-  await callApiPost('tracking/stop', {});
+  _desktopStopInFlight = true;
+  try {
+    await callApiPost('tracking/stop', {});
+  } finally {
+    _desktopStopInFlight = false;
+  }
 });
 
 module.exports = { startSync, stopSync, getExternalStartAt: () => _externalStartAt };
